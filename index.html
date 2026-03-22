@@ -183,7 +183,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="header-logo">📋</div>
   <div>
     <div class="header-title">COTECNA Report Generator</div>
-    <div class="header-sub">LEENEAR CORPORATION — AI 자동화 Tool v3.7 (2026.03.22)</div>
+    <div class="header-sub">LEENEAR CORPORATION — AI 자동화 Tool v3.8 (2026.03.22)</div>
   </div>
   <div class="header-badge">LEENAI</div>
 </div>
@@ -305,15 +305,11 @@ const IMG_CX = 3303270, IMG_CY = 2477135;
 const VAN_PROMPT = `この写真はコンテナ検査の写真です。以下の6種類のうち最も当てはまるものを1単語だけ答えてください（他のテキストは不要）:
 
 empty      - コンテナ内部が完全に空の写真（荷物が一切ない、床と壁だけ見える）
-half       - コンテナ内部に荷物(廃紙ベール等)が半分程度積まれている写真（奥の方だけ積載、手前は空）
+half       - コンテナ内部に荷物(廃紙ベール等)が半分程度積まれている写真（奥だけ積載、手前は空）
 full       - コンテナ内部に荷物が満載・ほぼ満杯の写真（ベールがぎっしり詰まっている）
-right_door - 【重要な判別条件】コンテナを外から見た写真で、以下の条件を全て満たすもの:
-             ①右側の扉だけが閉まっている（右扉に ONEU/GAOU/FFAU 等のコンテナ番号が白文字で書かれている）
-             ②左側の扉は開いており、左側からベール(廃紙)が見えている
-             ③写真の右半分はピンク/赤のコンテナ扉、左半分は開口部から荷物が見える
-             ※両扉が閉まっている写真はright_doorではなくinspectorまたはfullに分類
-inspector  - ヘルメット・安全ベストを着用した検査員が検査カードを持ってコンテナの前に立っている写真（人物あり）
-seal       - 黄色いCOTECNA社のプラスチックシールのクローズアップ。「COTECNA」ロゴの下に「JP-」で始まる数字が刻印されている。ONE・MSC・HAPAG・CIMC等の船社シールは絶対にsealと分類しないこと
+right_door - 【判別ポイント】コンテナを外から見た写真: ①右扉が閉まっており右扉の中央にONEU/GAOU等のコンテナ番号が大きく白文字で書かれている ②左扉は開いており左側から廃紙ベールが見えている ③写真の右半分=ピンクの扉面、左半分=開口部から荷物。両扉が閉まった写真は絶対にright_doorではない
+inspector  - ヘルメット・安全ベストを着用した検査員が検査カードを持ってコンテナ扉の前に立っている写真（必ず人物が写っている）
+seal       - 【判別ポイント】黄色いプラスチック製のCOTECNAシールのクローズアップ。シール本体が黄色で「COTECNA」のロゴがあり「JP-」で始まる数字が刻印されている。金属のシャックル部分と一緒に写っていることが多い。銀色・黒色の船社金属シール（ONE等）は絶対にsealと分類しないこと
 
 必ず上記6つのいずれか1つのみ答えてください。`;
 
@@ -777,7 +773,7 @@ async function loadPhotos() {
 
 // ═══════════════════════════════════
 // PHASE 4: AI 분류
-// 컨테이너 1번 사진 전체를 한 번에 → 패턴 파악 → 나머지 적용
+// 컨테이너 1번 사진을 1장씩 병렬 분류 → 패턴 파악 → 나머지 적용
 // ═══════════════════════════════════
 async function classifyAll() {
   state.classifiedVan = {};
@@ -786,43 +782,34 @@ async function classifyAll() {
   const contNos = Object.keys(state.vanPhotos).map(Number).sort((a,b)=>a-b);
   if (!contNos.length) throw new Error('로드된 사진이 없습니다');
 
-  // ── VAN 분류: 1번 컨테이너를 모든 사진 동시에 AI에게 보냄 ──
+  // ── VAN 분류: 1번 컨테이너 사진을 1장씩 병렬로 분류 ──
   const first = contNos[0];
   const firstPhotos = state.vanPhotos[first];
   const seqKeys = Object.keys(firstPhotos).filter(k=>!k.startsWith('_name_')).map(Number).sort((a,b)=>a-b);
 
-  log(`  🤖 컨테이너 1번 AI 분류 중 (${seqKeys.length}장 동시)...`, 'info');
+  log(`  🤖 컨테이너 1번 AI 분류 중 (${seqKeys.length}장 병렬)...`, 'info');
 
-  // 모든 사진을 1번의 API 호출로 — 이미지 배열로 전송
-  const content = [];
-  for (const seq of seqKeys) {
-    content.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data:firstPhotos[seq]}});
-    content.push({type:'text', text:`[사진 ${seq}번]`});
-  }
-  content.push({type:'text', text:`위 ${seqKeys.length}장의 사진을 順番に分類してください。\n각 사진에 대해 "사진N번: label" 형식으로만 답하세요。\n\n${VAN_PROMPT}\n\n例:\n사진1번: empty\n사진2번: half\n사진3번: full\n...全ての写真を必ず分類してください。`});
+  // 모든 사진을 병렬로 1장씩 분류 (멀티이미지보다 정확)
+  const results = await Promise.all(
+    seqKeys.map(async seq => {
+      const label = await classifyOne(firstPhotos[seq], VAN_PROMPT).catch(() => 'unknown');
+      const fname = firstPhotos[`_name_${seq}`] || `seq${seq}`;
+      log(`    seq${seq} [${fname}] → ${label}`, 'info');
+      return { seq, label };
+    })
+  );
 
+  // 슬롯 매핑 — 같은 슬롯이 중복될 경우 먼저 나온 것 우선
   let slotMap = {};
-  try {
-    const resp = await callAI(content, 400);
-    log(`  분류 결과: ${resp}`, 'info');
-    for (const line of resp.split('\n')) {
-      const m = line.match(/사진(\d+)번[：:\s]+(\w+)/);
-      if (m) {
-        const seq = parseInt(m[1]), label = m[2].trim().toLowerCase();
-        if (SLOT_ORDER.includes(label) && !slotMap[label]) slotMap[label] = seq;
-      }
-    }
-  } catch(e) {
-    // 멀티이미지 실패 시 → 1장씩 병렬로 폴백
-    log(`  ⚠️ 멀티이미지 실패, 1장씩 병렬로 전환...`, 'warn');
-    const results = await Promise.all(
-      seqKeys.map(seq => classifyOne(firstPhotos[seq], VAN_PROMPT).then(label=>({seq,label})))
-    );
-    for (const {seq, label} of results) {
-      if (SLOT_ORDER.includes(label) && !slotMap[label]) slotMap[label] = seq;
-      log(`    seq${seq} → ${label}`, 'info');
+  for (const { seq, label } of results) {
+    if (SLOT_ORDER.includes(label) && !slotMap[label]) {
+      slotMap[label] = seq;
     }
   }
+
+  // 슬롯이 부족할 경우 경고
+  const missing = SLOT_ORDER.filter(s => !slotMap[s]);
+  if (missing.length) log(`  ⚠️ 미분류 슬롯: ${missing.join(', ')}`, 'warn');
 
   log(`  ✅ 패턴 확정: ${JSON.stringify(slotMap)}`, 'ok');
   showClassifyPreview(firstPhotos, slotMap);

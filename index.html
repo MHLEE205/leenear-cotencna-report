@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>COTECNA Report Generator</title>
+<style>
+:root{
+  --bg:#0a0d14;--surface:#12151f;--surface2:#1a1e2e;--surface3:#222840;
+  --border:#2a2f4a;--border2:#3a4060;
+  --accent:#3b82f6;--accent2:#6366f1;--accent3:#8b5cf6;
+  --ok:#22c55e;--ng:#ef4444;--warn:#f59e0b;--info:#06b6d4;
+  --text:#e2e8f0;--sub:#8892b0;--sub2:#5a6484;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
+
+/* Header */
+.header{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;gap:14px;}
+.header-logo{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent3));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.header-title{font-size:1.1rem;font-weight:700;letter-spacing:.02em;}
+.header-sub{font-size:.72rem;color:var(--sub);margin-top:2px;}
+.header-badge{margin-left:auto;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:.65rem;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.05em;}
+
+/* Main layout */
+.main{max-width:860px;margin:0 auto;padding:24px 16px;}
+
+/* Step cards */
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;position:relative;overflow:hidden;}
+.step-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent3));}
+.step-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.step-num{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0;}
+.step-title{font-size:.9rem;font-weight:700;}
+.step-desc{font-size:.72rem;color:var(--sub);margin-left:auto;}
+
+/* Input group */
+.input-group{display:flex;gap:8px;margin-bottom:10px;}
+.input-wrap{flex:1;position:relative;}
+.input-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:.82rem;outline:none;transition:border-color .2s;}
+.input-wrap input:focus{border-color:var(--accent);}
+.input-wrap input::placeholder{color:var(--sub2);}
+.input-wrap label{position:absolute;top:-8px;left:10px;background:var(--surface);padding:0 4px;font-size:.65rem;color:var(--sub);font-weight:600;}
+
+.btn{padding:10px 18px;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+.btn-secondary{background:var(--surface2);color:var(--sub);border:1px solid var(--border);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--text);}
+.btn-success{background:linear-gradient(135deg,#059669,#10b981);color:#fff;}
+.btn-success:hover{opacity:.88;transform:translateY(-1px);}
+.btn-success:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+.btn-full{width:100%;padding:12px;}
+
+/* Info row */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.info-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;}
+.info-item label{display:block;font-size:.65rem;color:var(--sub);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+.info-item input,.info-item select{width:100%;background:transparent;border:none;color:var(--text);font-size:.82rem;outline:none;}
+.info-item input::placeholder{color:var(--sub2);}
+
+/* Container table */
+.cont-table{width:100%;border-collapse:collapse;font-size:.76rem;margin-bottom:10px;}
+.cont-table th{background:var(--surface2);color:var(--sub);font-weight:600;text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);}
+.cont-table td{padding:6px 10px;border-bottom:1px solid var(--border);}
+.cont-table tr:last-child td{border-bottom:none;}
+.cont-table input{width:100%;background:transparent;border:none;color:var(--text);font-size:.76rem;outline:none;}
+.cont-table input:focus{background:rgba(59,130,246,.08);border-radius:4px;}
+.cont-table .del-btn{background:none;border:none;color:var(--sub2);cursor:pointer;padding:2px 6px;font-size:.8rem;border-radius:4px;}
+.cont-table .del-btn:hover{color:var(--ng);background:rgba(239,68,68,.1);}
+.add-row-btn{font-size:.75rem;color:var(--accent);background:none;border:1px dashed var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;width:100%;transition:all .2s;}
+.add-row-btn:hover{border-color:var(--accent);background:rgba(59,130,246,.05);}
+
+/* Progress */
+.progress-wrap{margin:14px 0;display:none;}
+.progress-label{font-size:.75rem;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;}
+.progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:3px;transition:width .3s ease;}
+
+/* Log */
+.log-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;max-height:200px;overflow-y:auto;font-size:.72rem;font-family:'Consolas',monospace;line-height:1.6;}
+.log-box:empty::before{content:'로그가 여기에 표시됩니다...';color:var(--sub2);}
+.log-ok{color:var(--ok);}
+.log-err{color:var(--ng);}
+.log-info{color:var(--info);}
+.log-warn{color:var(--warn);}
+
+/* Photo grid */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;}
+.photo-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative;}
+.photo-item img{width:100%;height:90px;object-fit:cover;display:block;}
+.photo-item .photo-label{padding:4px 6px;font-size:.65rem;font-weight:600;color:var(--sub);}
+.photo-item.correct{border-color:var(--ok);}
+.photo-item.correct .photo-label{color:var(--ok);}
+.photo-item.checking{border-color:var(--warn);}
+.photo-badge{position:absolute;top:4px;right:4px;font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.7);}
+.badge-ok{color:var(--ok);}
+.badge-check{color:var(--warn);}
+
+/* Result section */
+.result-section{display:none;}
+.result-card{background:var(--surface);border:1px solid var(--ok);border-radius:14px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden;}
+.result-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--ok),#10b981);}
+.result-title{font-size:.9rem;font-weight:700;color:var(--ok);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.download-row{display:flex;gap:8px;flex-wrap:wrap;}
+.dl-btn{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .2s;text-decoration:none;color:var(--text);}
+.dl-btn:hover{border-color:var(--ok);background:rgba(34,197,94,.05);}
+.dl-btn .dl-icon{font-size:1.2rem;}
+.dl-btn .dl-info{font-size:.75rem;}
+.dl-btn .dl-name{font-weight:700;display:block;}
+.dl-btn .dl-size{color:var(--sub);font-size:.68rem;}
+
+/* Status badges */
+.status-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.status-chip{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:.7rem;}
+.chip-dot{width:7px;height:7px;border-radius:50%;}
+.chip-ok{background:var(--ok);}
+.chip-warn{background:var(--warn);}
+.chip-ng{background:var(--ng);}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:14px;background:var(--surface2);border-radius:10px;padding:4px;}
+.tab{flex:1;padding:8px;border:none;border-radius:7px;background:transparent;color:var(--sub);font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3);}
+.panel{display:none;}.panel.active{display:block;}
+
+/* Divider */
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+
+/* API key input */
+.api-section{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:12px;}
+.api-section label{font-size:.7rem;color:var(--sub);font-weight:600;display:block;margin-bottom:6px;}
+.api-row{display:flex;gap:8px;}
+.api-row input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:.8rem;outline:none;font-family:monospace;}
+.api-row input:focus{border-color:var(--accent);}
+.api-hint{font-size:.65rem;color:var(--sub2);margin-top:5px;}
+
+/* SP URL section */
+.sp-section{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:12px;}
+.sp-section label{font-size:.7rem;color:var(--sub);font-weight:600;display:block;margin-bottom:6px;}
+
+/* Folder status */
+.folder-status{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.folder-chip{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:.7rem;font-weight:600;border:1px solid;}
+.folder-found{border-color:var(--ok);color:var(--ok);background:rgba(34,197,94,.08);}
+.folder-missing{border-color:var(--ng);color:var(--ng);background:rgba(239,68,68,.08);}
+.folder-pending{border-color:var(--border);color:var(--sub);background:var(--surface2);}
+
+/* Classification preview */
+.class-section{margin-top:10px;}
+.class-title{font-size:.75rem;font-weight:700;color:var(--sub);margin-bottom:8px;}
+.class-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
+.class-slot{background:var(--surface2);border:1px solid var(--border);border-radius:7px;overflow:hidden;text-align:center;}
+.class-slot img{width:100%;height:70px;object-fit:cover;display:block;}
+.class-slot .slot-name{font-size:.6rem;padding:3px;color:var(--sub);font-weight:600;}
+.class-slot.slot-ok{border-color:var(--ok);}
+.class-slot.slot-ok .slot-name{color:var(--ok);}
+.class-slot.slot-loading{border-color:var(--warn);}
+.class-slot .slot-img-placeholder{height:70px;display:flex;align-items:center;justify-content:center;color:var(--sub2);font-size:.8rem;}
+
+/* Phase chips */
+.phase-chip{padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--sub2);background:var(--surface2);transition:all .3s;}
+.phase-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.1);animation:pulse 1.5s infinite;}
+.phase-chip.done{border-color:var(--ok);color:var(--ok);background:rgba(34,197,94,.1);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* Mobile */
+@media(max-width:600px){
+  .info-grid{grid-template-columns:1fr;}
+  .class-grid{grid-template-columns:repeat(3,1fr);}
+  .download-row{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">📋</div>
+  <div>
+    <div class="header-title">COTECNA Report Generator</div>
+    <div class="header-sub">LEENEAR CORPORATION — AI 자동화 Tool v3.1 (2026.03.22)</div>
+  </div>
+  <div class="header-badge">LEENAI</div>
+</div>
+
+<div class="main">
+
+  <!-- STEP 1: 설정 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">API 키 설정</div>
+      <div class="step-desc">최초 1회만 입력</div>
+    </div>
+    <div class="api-section">
+      <label>🔑 Anthropic API Key</label>
+      <div class="api-row">
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+        <button class="btn btn-secondary" onclick="toggleApiKey()">표시</button>
+        <button class="btn btn-secondary" onclick="saveApiKey()">저장</button>
+      </div>
+      <div class="api-hint">※ 키는 브라우저 로컬에만 저장됩니다. 서버로 전송되지 않습니다.</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 로컬 폴더 선택 + 원클릭 전체 실행 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">VONO 폴더 선택</div>
+      <div class="step-desc">폴더 선택 하나로 전체 자동 처리</div>
+    </div>
+    
+    <!-- 폴더 선택 (input webkitdirectory — file:// 환경 완벽 지원) -->
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:stretch;">
+      <label for="folderInput" id="folderDisplay" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--sub);padding:10px 12px;font-size:.82rem;display:flex;align-items:center;gap:8px;min-height:42px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=window.__folderReady?'var(--ok)':'var(--border)'">
+        <span style="font-size:1rem;">📁</span>
+        <span id="folderName">여기를 클릭하여 VONO 폴더 선택...</span>
+      </label>
+      <input type="file" id="folderInput" webkitdirectory multiple accept=".jpg,.jpeg,.xlsx,.xls,.docx,.pdf,.png"
+        style="display:none;" onchange="onFolderSelected(this)">
+      <button class="btn btn-primary" id="startBtn" onclick="startAll()" style="padding:10px 20px;font-size:.85rem;" disabled>
+        🚀 시작
+      </button>
+    </div>
+    <div style="font-size:.68rem;color:var(--sub2);">
+      ※ OneDrive 바탕화면의 VONO 폴더 클릭 → 하위 파일이 자동으로 읽힙니다 (예: <code style="color:var(--info);">VO_NO.X.13.096264-P2</code>)
+    </div>
+
+    <!-- 실시간 진행 로그 (시작 후 표시) -->
+    <div id="liveSection" style="display:none;margin-top:14px;">
+      
+      <!-- 단계 표시 바 -->
+      <div id="phaseBar" style="display:flex;gap:6px;margin-bottom:12px;font-size:.7rem;font-weight:700;flex-wrap:wrap;">
+        <div class="phase-chip" id="ph1">📂 폴더 스캔</div>
+        <div style="color:var(--sub2);align-self:center;">→</div>
+        <div class="phase-chip" id="ph2">📊 정보 추출</div>
+        <div style="color:var(--sub2);align-self:center;">→</div>
+        <div class="phase-chip" id="ph3">📸 사진 로드</div>
+        <div style="color:var(--sub2);align-self:center;">→</div>
+        <div class="phase-chip" id="ph4">🤖 AI 분류</div>
+        <div style="color:var(--sub2);align-self:center;">→</div>
+        <div class="phase-chip" id="ph5">📄 리포트 생성</div>
+      </div>
+
+      <!-- 프로그레스 바 -->
+      <div class="progress-bar" style="margin-bottom:10px;">
+        <div class="progress-fill" id="progressFill" style="width:0%;transition:width .4s ease;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--sub);margin-bottom:10px;">
+        <span id="progressLabel">준비 중...</span>
+        <span id="progressPct">0%</span>
+      </div>
+
+      <!-- 실시간 로그 -->
+      <div class="log-box" id="logBox" style="max-height:240px;"></div>
+      
+      <!-- 분류 미리보기 -->
+      <div id="classifyPreview" style="display:none;margin-top:10px;">
+        <div class="class-title">📷 AI 분류 결과 — 컨테이너 1번</div>
+        <div class="class-grid" id="classGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 숨겨진 state 저장용 -->
+  <input type="hidden" id="voNo">
+  <input type="hidden" id="reportDate">
+  <input type="hidden" id="inspPlace">
+  <input type="hidden" id="baleCount">
+  <div id="contBody" style="display:none;"></div>
+
+  <!-- STEP 5: 결과 다운로드 -->
+  <div class="result-section" id="resultSection">
+    <div class="result-card">
+      <div class="result-title">✅ 리포트 생성 완료!</div>
+      <div class="download-row" id="downloadRow"></div>
+      <div class="status-row" id="statusRow"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════
+const SLOT_ORDER    = ['empty','half','full','right_door','inspector','seal'];
+const SLOT_CAPTIONS = {
+  empty:      'Empty container',
+  half:       'Half load container',
+  full:       'Full load container',
+  right_door: 'Right door closed, with Container No.',
+  inspector:  'Inspector with closed container',
+  seal:       'Cotecna container seal, closed up'
+};
+const IMG_CX = 3303270, IMG_CY = 2477135;
+
+// AI 분류 프롬프트 — 사진 내용만으로 판단 (파일명/폴더명 무관)
+const VAN_PROMPT = `この写真はコンテナ検査の写真です。以下の6種類のうち最も当てはまるものを1単語だけ答えてください（他のテキストは不要）:
+
+empty      - コンテナ内部が完全に空の写真（荷物が一切ない）
+half       - コンテナ内部に荷物(廃紙ベール等)が半分程度積まれている写真（奥の方だけ積載）
+full       - コンテナ内部に荷物が満載・ほぼ満杯の写真
+right_door - コンテナの右扉だけが閉まった状態の外観写真（扉にコンテナ番号が表示されている）
+inspector  - ヘルメット・安全ベストを着用した検査員が検査カードを持ってコンテナの前に立っている写真（人物あり）
+seal       - COTECNAまたは船社のシール(seal)のクローズアップ写真（番号が見える）
+
+必ず上記6つのいずれか1つのみ答えてください。`;
+
+const BALING_PROMPT = `この写真は廃紙ベール(bale)検査の写真です。以下のうち最も当てはまるものを1単語だけ答えてください:
+
+goods_yard  - ベールが倉庫・ヤードに複数積まれている全景写真（ヤード在庫・倉庫全体が見える）
+person_bale - ヘルメット着用の検査員が検査カードを持ってベールの前に立っている写真（人物あり）
+open_bale   - ベールが解体・開梱されて紙・雑誌が床に散らばっている写真（人なし）
+rebale      - COTECNAのテープ・ラベル・番号が貼られた再圧縮済みのベールの写真
+
+必ず上記4つのいずれか1つのみ答えてください。`;
+
+// 後方互換
+const BARA_PROMPT = BALING_PROMPT;
+const PRESS_PROMPT = BALING_PROMPT;
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+let state = {
+  apiKey: '',
+  fileList: [],       // File[] — 선택된 전체 파일
+  rootName: '',       // 루트 폴더명
+  mode: '',           // 'folder' | 'numbered' | 'unknown'
+  groups: {},         // {groupKey: File[]} — 컨테이너별 사진 그룹
+  containers: [],     // [{no, container, seal}]
+  vanPhotos: {},      // {no: {seq: b64}}
+  baraPhotos: {},     // {fname: b64}
+  pressPhotos: {},    // {fname: b64}
+  classifiedVan: {},  // {no: {slot: b64}}
+  classifiedBaling: {},
+  logoB64: null,
+  voNo: '', reportDate: '', inspPlace: '', baleCount: 7,
+};
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+window.onload = () => {
+  const saved = localStorage.getItem('cotecna_api_key');
+  if (saved) { state.apiKey = saved; document.getElementById('apiKey').value = saved; }
+};
+
+function toggleApiKey() {
+  const i = document.getElementById('apiKey');
+  i.type = i.type === 'password' ? 'text' : 'password';
+}
+function saveApiKey() {
+  const v = document.getElementById('apiKey').value.trim();
+  if (!v) return alert('API 키를 입력하세요');
+  state.apiKey = v;
+  localStorage.setItem('cotecna_api_key', v);
+  log('✅ API 키 저장됨', 'ok');
+}
+
+// ═══════════════════════════════════
+// 폴더 선택
+// ═══════════════════════════════════
+function onFolderSelected(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  state.fileList = files;
+  state.rootName = files[0].webkitRelativePath.split('/')[0];
+  const display = document.getElementById('folderName');
+  display.textContent = `${state.rootName}  (${files.length}개 파일)`;
+  display.style.color = 'var(--ok)';
+  document.getElementById('folderDisplay').style.borderColor = 'var(--ok)';
+  document.getElementById('startBtn').disabled = false;
+}
+
+// ═══════════════════════════════════
+// 파일 유틸
+// ═══════════════════════════════════
+function fileToB64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function fileToBuffer(file) { return file.arrayBuffer(); }
+function ab2b64(buf) {
+  const b = new Uint8Array(buf); let s='', c=8192;
+  for (let i=0;i<b.length;i+=c) s+=String.fromCharCode(...b.slice(i,i+c));
+  return btoa(s);
+}
+function b64ToUint8(b64) {
+  const b=atob(b64), a=new Uint8Array(b.length);
+  for(let i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return a;
+}
+
+// ═══════════════════════════════════
+// MAIN — 원클릭 전체 처리
+// ═══════════════════════════════════
+async function startAll() {
+  if (!state.fileList.length) return alert('폴더를 먼저 선택하세요');
+  state.apiKey = document.getElementById('apiKey').value.trim();
+  if (!state.apiKey) return alert('API 키를 입력하고 저장해주세요');
+
+  clearLog();
+  document.getElementById('liveSection').style.display = 'block';
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('startBtn').innerHTML = '<span class="spinner"></span>처리 중...';
+  setPhase(1);
+
+  try {
+    // PHASE 1: 구조 분석 & 그룹핑
+    setProgress(5, '폴더 구조 분석 중...');
+    await analyzeAndGroup();
+
+    // PHASE 2: 정보 추출
+    setPhase(2);
+    setProgress(15, '작업 정보 추출 중...');
+    await extractInfo();
+    await askMissing();
+
+    // PHASE 3: 사진 로드
+    setPhase(3);
+    setProgress(25, '사진 로드 중...');
+    await loadPhotos();
+
+    // PHASE 4: AI 분류
+    setPhase(4);
+    setProgress(55, 'AI 분류 중...');
+    await classifyAll();
+
+    // PHASE 5: 리포트 생성
+    setPhase(5);
+    setProgress(88, 'VAN FORM 생성 중...');
+    const vanDocx = buildVanDocx();
+    setProgress(95, 'BALING FORM 생성 중...');
+    const balingDocx = buildBalingDocx();
+
+    setProgress(100, '🎉 완료!');
+    setAllDone();
+    showResults(vanDocx, balingDocx);
+    log('🎉 리포트 생성 완료!', 'ok');
+
+  } catch(e) {
+    log(`❌ 오류: ${e.message}`, 'err');
+    console.error(e);
+  } finally {
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').innerHTML = '🚀 시작';
+  }
+}
+
+// ═══════════════════════════════════
+// PHASE 1: 구조 분석 & 그룹핑
+// 룰 1: 컨테이너별 폴더 → 폴더명으로 그룹
+// 룰 2: 같은 폴더 + 파일명 패턴 → 패턴으로 그룹
+// 룰 3: 그룹핑 불가 → 사용자에게 안내
+// ═══════════════════════════════════
+async function analyzeAndGroup() {
+  const imgFiles = state.fileList.filter(f => f.name.match(/\.(jpe?g|png)$/i));
+  log(`📂 ${state.rootName} | 전체 ${state.fileList.length}개 파일 | 사진 ${imgFiles.length}장`, 'info');
+
+  // VAN 사진 후보 — バラ/プレス/コンテナ写真 중 コンテナ写真 또는 VAN 관련 파일
+  // BALING 전용 폴더(バラ/プレス) 제외한 사진만 VAN 대상으로
+  const BALING_FOLDER_KEYS = ['バラ', 'プレス', 'baling', 'bara', 'press'];
+  const vanCandidates = imgFiles.filter(f =>
+    !BALING_FOLDER_KEYS.some(k => f.webkitRelativePath.includes(k))
+  );
+  log(`  VAN 후보 사진: ${vanCandidates.length}장`, 'info');
+
+  // ──────────────────────────────────
+  // 룰 1: 컨테이너별 폴더 구조?
+  // VAN 후보 사진이 2개 이상의 하위 폴더에 나뉘어 있고
+  // 각 폴더명이 컨테이너 번호처럼 보이는 경우
+  // ──────────────────────────────────
+  const vanDirs = [...new Set(vanCandidates.map(f => {
+    const parts = f.webkitRelativePath.split('/');
+    return parts.slice(0, -1).join('/');
+  }))];
+
+  // depth 3 이상이고 폴더명이 컨테이너 번호 패턴인 폴더
+  const contFolderDirs = vanDirs.filter(d => {
+    const depth = d.split('/').length;
+    const dirName = d.split('/').slice(-1)[0];
+    // 컨테이너 번호 패턴: ABCD1234567 또는 알파벳+숫자 조합
+    return depth >= 3 && dirName.match(/[A-Z]{2,4}[\s\-]?\d{5,}/i);
+  });
+
+  if (contFolderDirs.length >= 2) {
+    state.mode = 'folder';
+    state.groups = {};
+    for (const dir of contFolderDirs) {
+      const dirName = dir.split('/').slice(-1)[0];
+      state.groups[dirName] = vanCandidates.filter(f =>
+        f.webkitRelativePath.startsWith(dir + '/')
+      );
+    }
+    log(`✅ [룰1] 컨테이너 폴더 그룹핑 — ${contFolderDirs.length}개 감지`, 'ok');
+    for (const [k,v] of Object.entries(state.groups))
+      log(`   📁 ${k}: ${v.length}장`, 'info');
+    return;
+  }
+
+  // ──────────────────────────────────
+  // 룰 2: 파일명 번호 패턴으로 구분?
+  // "N (M).jpg" 패턴 — VAN 후보 사진에서만 체크
+  // ──────────────────────────────────
+  const numbered = vanCandidates.filter(f => f.name.match(/^(\d+)[\s_\-\(]/));
+  if (numbered.length >= vanCandidates.length * 0.5 && numbered.length > 0) {
+    state.mode = 'numbered';
+    state.groups = {};
+    for (const f of vanCandidates) {
+      const m = f.name.match(/^(\d+)/);
+      if (m) {
+        const no = parseInt(m[1]);
+        if (!state.groups[no]) state.groups[no] = [];
+        state.groups[no].push(f);
+      }
+    }
+    // 그룹 정렬 (번호 순)
+    const sortedGroups = {};
+    Object.keys(state.groups).map(Number).sort((a,b)=>a-b).forEach(k => {
+      sortedGroups[k] = state.groups[k];
+    });
+    state.groups = sortedGroups;
+
+    if (Object.keys(state.groups).length >= 2) {
+      log(`✅ [룰2] 파일명 번호 그룹핑 — ${Object.keys(state.groups).length}개 컨테이너 감지`, 'ok');
+      for (const [k,v] of Object.entries(state.groups))
+        log(`   🔢 컨테이너 ${k}번: ${v.length}장`, 'info');
+      return;
+    }
+  }
+
+  // ──────────────────────────────────
+  // 룰 3: 그룹핑 불가 → 사용자에게 안내
+  // ──────────────────────────────────
+  state.mode = 'unknown';
+  log('⚠️ 컨테이너별로 사진을 구분할 수 없습니다.', 'warn');
+  log('', 'warn');
+  log('📋 아래 방법 중 하나로 재전송을 요청해주세요:', 'warn');
+  log('   방법 A: 컨테이너 번호별로 폴더를 나눠서 전송', 'warn');
+  log('   방법 B: 파일명 앞에 컨테이너 번호를 붙여서 전송 (예: 1_사진.jpg)', 'warn');
+  throw new Error('컨테이너 구분 불가 — 압축장에 재요청 필요 (로그 참조)');
+}
+
+// ═══════════════════════════════════
+// PHASE 2: 정보 추출 (엑셀/PDF/폴더명)
+// ═══════════════════════════════════
+async function extractInfo() {
+  // VO번호 — 폴더명/파일명에서
+  const allPaths = state.fileList.map(f=>f.webkitRelativePath).join('\n');
+  const voM = allPaths.match(/X\.(\d+\.\d+)-P(\d+)/i);
+  if (voM) state.voNo = `X.${voM[1]}-P${voM[2]}`;
+
+  // 날짜 — MMDD 패턴 (0316 등)
+  const dateM = state.fileList.map(f=>f.name).join(' ').match(/(\d{2})(\d{2})[^\d]/);
+  if (dateM && !state.reportDate) {
+    const months = {1:'JAN',2:'FEB',3:'MAR',4:'APR',5:'MAY',6:'JUN',7:'JUL',8:'AUG',9:'SEP',10:'OCT',11:'NOV',12:'DEC'};
+    const m = parseInt(dateM[1]);
+    if (m>=1&&m<=12) state.reportDate = `${months[m]}. ${parseInt(dateM[2])}, 2026`;
+  }
+
+  // 엑셀 파일 → AI 파싱
+  const xlsxFiles = state.fileList.filter(f=>f.name.match(/\.(xlsx|xls)$/i));
+  if (xlsxFiles.length) {
+    log(`📊 엑셀 ${xlsxFiles.length}개 AI 분석 중...`, 'info');
+    let allContainers = [];
+    for (const file of xlsxFiles) {
+      try {
+        const buf = await fileToBuffer(file);
+        const b64 = ab2b64(buf);
+        const resp = await callAI([
+          {type:'document', source:{type:'base64',
+            media_type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', data:b64}},
+          {type:'text', text:`WEIGHT LIST엑셀에서 JSON만 반환:\n{"containers":[{"no":1,"container":"XXXX0000000","seal":"JP-XXXXXX"}],"date":"MAR. 19, 2026","vo_no":"X.13.XXXXXX-PX","inspection_place":null}\nJSON以外出力禁止`}
+        ], 1200);
+        const parsed = JSON.parse(resp.replace(/```json\n?|\n?```/g,'').trim());
+        if (parsed.containers?.length) {
+          for (const c of parsed.containers)
+            if (!allContainers.find(x=>x.container===c.container))
+              allContainers.push({...c, no: allContainers.length+1});
+          log(`  ✅ ${file.name}: ${parsed.containers.length}개 컨테이너`, 'ok');
+        }
+        if (parsed.date && !state.reportDate) state.reportDate = parsed.date;
+        if (parsed.vo_no && !state.voNo) state.voNo = parsed.vo_no;
+        if (parsed.inspection_place) state.inspPlace = parsed.inspection_place;
+      } catch(e) { log(`  ⚠️ ${file.name} 파싱 오류: ${e.message}`, 'warn'); }
+    }
+    if (allContainers.length) { state.containers = allContainers; }
+  }
+
+  // 컨테이너 목록이 없거나 그룹 수와 안 맞으면 그룹키에서 자동 생성
+  const groupCount = Object.keys(state.groups).length;
+  if (!state.containers.length || state.containers.length < groupCount) {
+    if (state.containers.length < groupCount) {
+      log(`  ⚠️ 엑셀에서 ${state.containers.length}개만 추출됨 → 그룹 수(${groupCount})에 맞게 보완`, 'warn');
+    }
+    const existing = state.containers.map(c=>c.container);
+    let no = state.containers.length + 1;
+    const groupEntries = Object.keys(state.groups).map((k,i)=>({
+      key: k,
+      no: state.mode==='numbered' ? parseInt(k) : i+1
+    })).sort((a,b)=>a.no-b.no);
+
+    for (const {key, no: gno} of groupEntries) {
+      if (!state.containers.find(c=>c.no===gno)) {
+        const clean = key.toString().replace(/\s+/g,'');
+        const cnNo = clean.match(/[A-Z]{4}\d{7}/i)?.[0] || clean;
+        state.containers.push({ no: gno, container: cnNo, seal: '' });
+      }
+    }
+    // no 순으로 정렬
+    state.containers.sort((a,b)=>a.no-b.no);
+    log(`  컨테이너 ${state.containers.length}개 확정`, 'ok');
+  }
+
+  // PDF(搬入票)에서 씰번호 추출
+  const pdfFiles = state.fileList.filter(f => f.name.match(/搬入票|WEIGHT|weight/i) && f.name.endsWith('.pdf'));
+  if (pdfFiles.length && state.containers.some(c=>!c.seal)) {
+    log(`  📄 搬入票 PDF에서 씰번호 추출 중...`, 'info');
+    try {
+      const buf = await fileToBuffer(pdfFiles[0]);
+      const b64 = ab2b64(buf);
+      const resp = await callAI([
+        {type:'document', source:{type:'base64', media_type:'application/pdf', data:b64}},
+        {type:'text', text:`搬入票PDFからコンテナ番号とシール番号を全て抽出してJSON配列のみ返してください:\n[{"container":"XXXX0000000","seal":"JP-XXXXXX"},...]\nJSON配列のみ出力。他のテキスト不要。`}
+      ], 800);
+      const parsed = JSON.parse(resp.replace(/```json\n?|\n?```/g,'').trim());
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const c = state.containers.find(c => c.container === item.container ||
+            c.container === item.container?.replace(/\s+/g,''));
+          if (c && item.seal) { c.seal = item.seal; }
+        }
+        log(`  ✅ 씰번호 추출 완료`, 'ok');
+      }
+    } catch(e) { log(`  ⚠️ PDF 파싱 오류: ${e.message}`, 'warn'); }
+  }
+
+  // RIMG7 수로 베일 수
+  const r7 = state.fileList.filter(f=>f.name.match(/^RIMG7/i)).length;
+  if (r7 > 0) { state.baleCount = r7; log(`  ✅ 베일 수: RIMG7 ${r7}개`, 'ok'); }
+
+  log(`📋 VO=${state.voNo||'?'} | Date=${state.reportDate||'?'} | 컨테이너=${state.containers.length}개 | 베일=${state.baleCount}`, 'ok');
+}
+
+async function askMissing() {
+  if (!state.voNo) {
+    const v = prompt('❓ VO No.를 입력하세요 (예: X.13.096264-P2)');
+    if (v) { state.voNo = v; log(`  VO No.: ${v}`, 'ok'); }
+  }
+  if (!state.reportDate) {
+    const v = prompt('❓ 검사 날짜를 입력하세요 (예: MAR. 19, 2026)');
+    if (v) { state.reportDate = v; log(`  날짜: ${v}`, 'ok'); }
+  }
+}
+
+// ═══════════════════════════════════
+// PHASE 3: 사진 로드 (병렬)
+// ═══════════════════════════════════
+async function loadPhotos() {
+  state.vanPhotos = {};
+  state.baraPhotos = {};
+  state.pressPhotos = {};
+
+  const groupKeys = Object.keys(state.groups);
+  const total = groupKeys.length;
+  log(`  ${total}개 그룹 병렬 로드 시작...`, 'info');
+
+  // numbered 모드는 그룹 키 자체가 컨테이너 번호
+  // folder 모드는 순서대로 1,2,3... 부여
+  const BATCH = 4;
+  const groupEntries = groupKeys.map((key, idx) => ({
+    key,
+    no: state.mode === 'numbered' ? parseInt(key) : idx + 1
+  }));
+
+  for (let i=0; i<groupEntries.length; i+=BATCH) {
+    const batch = groupEntries.slice(i, i+BATCH);
+    await Promise.all(batch.map(async ({key, no}) => {
+      const files = state.groups[key];
+      // seq는 파일명 순 정렬
+      const sorted = [...files].sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+      state.vanPhotos[no] = {};
+      let seq = 1;
+      for (const file of sorted) {
+        const b64 = await fileToB64(file);
+        state.vanPhotos[no][seq] = b64;
+        state.vanPhotos[no][`_name_${seq}`] = file.name;
+        seq++;
+      }
+      log(`  ✅ ${state.mode==='numbered'?`컨테이너 ${no}번`:`[${key}]`}: ${files.length}장 로드`, 'ok');
+    }));
+    setProgress(25 + Math.round((i+batch.length)/groupEntries.length*25), `사진 로드 ${i+batch.length}/${groupEntries.length}`);
+  }
+
+  // BALING용 사진 분리
+  // 우선순위: 1) バラ/プレス 전용 폴더 2) VAN 그룹 안에 섞인 BALING 사진
+  const baraFiles = state.fileList.filter(f =>
+    f.webkitRelativePath.includes('バラ') && f.name.match(/\.(jpe?g|png)$/i));
+  const pressFiles = state.fileList.filter(f =>
+    f.webkitRelativePath.includes('プレス') && f.name.match(/\.(jpe?g|png)$/i));
+
+  if (baraFiles.length || pressFiles.length) {
+    await Promise.all([
+      ...baraFiles.map(async f => { state.baraPhotos[f.name] = await fileToB64(f); }),
+      ...pressFiles.map(async f => { state.pressPhotos[f.name] = await fileToB64(f); }),
+    ]);
+    log(`  バラ: ${baraFiles.length}장, プレス: ${pressFiles.length}장 로드`, 'ok');
+  } else {
+    // バラ/プレス 폴더 없음 → VAN 그룹 안에서 BALING 사진 찾기
+    // BALING 키워드가 있는 파일을 baraPhotos에 모음
+    const BALING_KEYS = ['ベール','ヤード','在庫','開梱','バラ','検査済み','rebale','yard','bale'];
+    const allImgFiles = state.fileList.filter(f => f.name.match(/\.(jpe?g|png)$/i));
+    const balingImgs = allImgFiles.filter(f =>
+      BALING_KEYS.some(k => f.name.includes(k))
+    );
+    if (balingImgs.length) {
+      await Promise.all(balingImgs.map(async f => {
+        state.baraPhotos[f.name] = await fileToB64(f);
+      }));
+      log(`  ℹ️ VAN 폴더에서 BALING 사진 ${balingImgs.length}장 분리`, 'info');
+      // 베일 수 — 検査済みベール 개수
+      const rebaleCount = balingImgs.filter(f=>f.name.includes('検査済みベール')).length;
+      if (rebaleCount > 0 && state.baleCount === 7) state.baleCount = rebaleCount;
+    } else {
+      log('  ℹ️ BALING 사진 없음 — VAN 사진에서 재활용', 'info');
+    }
+  }
+
+  // 로고 추출
+  await loadLogo();
+
+  log(`  총 ${groupKeys.length}개 컨테이너 로드 완료`, 'ok');
+}
+
+// ═══════════════════════════════════
+// PHASE 4: AI 분류
+// 컨테이너 1번 사진 전체를 한 번에 → 패턴 파악 → 나머지 적용
+// ═══════════════════════════════════
+async function classifyAll() {
+  state.classifiedVan = {};
+  state.classifiedBaling = { goods_yard:null, inspector:null, open_bales:[], rebales:[] };
+
+  const contNos = Object.keys(state.vanPhotos).map(Number).sort((a,b)=>a-b);
+  if (!contNos.length) throw new Error('로드된 사진이 없습니다');
+
+  // ── VAN 분류: 1번 컨테이너를 모든 사진 동시에 AI에게 보냄 ──
+  const first = contNos[0];
+  const firstPhotos = state.vanPhotos[first];
+  const seqKeys = Object.keys(firstPhotos).filter(k=>!k.startsWith('_name_')).map(Number).sort((a,b)=>a-b);
+
+  log(`  🤖 컨테이너 1번 AI 분류 중 (${seqKeys.length}장 동시)...`, 'info');
+
+  // 모든 사진을 1번의 API 호출로 — 이미지 배열로 전송
+  const content = [];
+  for (const seq of seqKeys) {
+    content.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data:firstPhotos[seq]}});
+    content.push({type:'text', text:`[사진 ${seq}번]`});
+  }
+  content.push({type:'text', text:`위 ${seqKeys.length}장의 사진을 順番に分類してください。\n각 사진에 대해 "사진N번: label" 형식으로만 답하세요。\n\n${VAN_PROMPT}\n\n例:\n사진1번: empty\n사진2번: half\n사진3번: full\n...全ての写真を必ず分類してください。`});
+
+  let slotMap = {};
+  try {
+    const resp = await callAI(content, 400);
+    log(`  분류 결과: ${resp}`, 'info');
+    for (const line of resp.split('\n')) {
+      const m = line.match(/사진(\d+)번[：:\s]+(\w+)/);
+      if (m) {
+        const seq = parseInt(m[1]), label = m[2].trim().toLowerCase();
+        if (SLOT_ORDER.includes(label) && !slotMap[label]) slotMap[label] = seq;
+      }
+    }
+  } catch(e) {
+    // 멀티이미지 실패 시 → 1장씩 병렬로 폴백
+    log(`  ⚠️ 멀티이미지 실패, 1장씩 병렬로 전환...`, 'warn');
+    const results = await Promise.all(
+      seqKeys.map(seq => classifyOne(firstPhotos[seq], VAN_PROMPT).then(label=>({seq,label})))
+    );
+    for (const {seq, label} of results) {
+      if (SLOT_ORDER.includes(label) && !slotMap[label]) slotMap[label] = seq;
+      log(`    seq${seq} → ${label}`, 'info');
+    }
+  }
+
+  log(`  ✅ 패턴 확정: ${JSON.stringify(slotMap)}`, 'ok');
+  showClassifyPreview(firstPhotos, slotMap);
+
+  // 모든 컨테이너에 동일 패턴 적용 (API 추가 호출 없음)
+  for (const no of contNos) {
+    state.classifiedVan[no] = {};
+    const photos = state.vanPhotos[no] || {};
+    for (const [slot, seq] of Object.entries(slotMap)) {
+      if (photos[seq]) state.classifiedVan[no][slot] = photos[seq];
+    }
+  }
+  setProgress(70, `VAN 분류 완료 — ${contNos.length}컨테이너`);
+  log(`✅ VAN 분류 완료 (API ${seqKeys.length}회 → 전체 적용)`, 'ok');
+
+  // ── BALING 분류 ──
+  const hasBaling = Object.keys(state.baraPhotos).length > 0 || Object.keys(state.pressPhotos).length > 0;
+  if (hasBaling) {
+    await classifyBalingFromFolders();
+  } else {
+    await classifyBalingFromVan(firstPhotos, slotMap);
+  }
+}
+
+async function classifyBalingFromFolders() {
+  // baraPhotos에 모든 BALING 사진이 들어있음 (전용 폴더 or VAN에서 분리)
+  const baraNames = Object.keys(state.baraPhotos).sort();
+  log(`  🤖 BALING 분류: ${baraNames.length}장 병렬...`, 'info');
+
+  const BATCH = 8;
+  const results = [];
+  for (let i=0; i<baraNames.length; i+=BATCH) {
+    const slice = baraNames.slice(i,i+BATCH);
+    const res = await Promise.all(slice.map(n =>
+      classifyOne(state.baraPhotos[n], BALING_PROMPT)
+        .then(label => ({ name:n, label }))
+        .catch(() => ({ name:n, label:'unknown' }))
+    ));
+    results.push(...res);
+    setProgress(72 + Math.round((i+slice.length)/baraNames.length*6), `BALING 분류 중...`);
+  }
+
+  for (const {name, label} of results) {
+    log(`    ${name} → ${label}`, 'info');
+    if (label==='goods_yard' && !state.classifiedBaling.goods_yard)
+      state.classifiedBaling.goods_yard = state.baraPhotos[name];
+    else if (label==='person_bale' && !state.classifiedBaling.inspector)
+      state.classifiedBaling.inspector = state.baraPhotos[name];
+    else if (label==='open_bale')
+      state.classifiedBaling.open_bales.push(state.baraPhotos[name]);
+    else if (label==='rebale')
+      state.classifiedBaling.rebales.push(state.baraPhotos[name]);
+  }
+
+  // pressPhotos도 있으면 추가
+  const pressNames = Object.keys(state.pressPhotos).sort();
+  for (const name of pressNames) {
+    classifyOne(state.pressPhotos[name], BALING_PROMPT)
+      .then(label => {
+        if (label==='rebale') state.classifiedBaling.rebales.push(state.pressPhotos[name]);
+        else if (label==='goods_yard' && !state.classifiedBaling.goods_yard)
+          state.classifiedBaling.goods_yard = state.pressPhotos[name];
+      }).catch(()=>{});
+  }
+
+  log(`✅ BALING: goods=${state.classifiedBaling.goods_yard?'O':'X'} inspector=${state.classifiedBaling.inspector?'O':'X'} open=${state.classifiedBaling.open_bales.length} rebale=${state.classifiedBaling.rebales.length}`, 'ok');
+}
+
+async function classifyBalingFromVan(photos, slotMap) {
+  // VAN 사진에서 BALING에 쓸 수 있는 사진 재활용
+  log('  ℹ️ BALING: VAN 사진에서 재활용 (バラ/プレス 폴더 없음)', 'info');
+  // inspector 사진 재활용
+  if (slotMap['inspector']) state.classifiedBaling.inspector = photos[slotMap['inspector']];
+  // full 사진을 goods_yard 대체
+  if (slotMap['full']) state.classifiedBaling.goods_yard = photos[slotMap['full']];
+  log('  ⚠️ open_bale/rebale 사진 없음 — バラ/プレス 폴더가 있으면 더 완전한 BALING FORM 생성 가능', 'warn');
+}
+
+// 단일 이미지 AI 분류
+async function classifyOne(b64, prompt) {
+  return callAI([
+    {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
+    {type:'text', text:prompt}
+  ], 20);
+}
+
+// ═══════════════════════════════════
+// AI API 호출 (공통)
+// ═══════════════════════════════════
+async function callAI(content, maxTokens=20) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': state.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      messages:[{role:'user', content}]
+    })
+  });
+  if (!r.ok) throw new Error(`API ${r.status}`);
+  const d = await r.json();
+  return d.content?.[0]?.text?.trim() || '';
+}
+
+// ロゴ 추출
+async function loadLogo() {
+  state.logoB64 = null;
+  const docxFiles = state.fileList.filter(f => f.name.toLowerCase().includes('van') && f.name.endsWith('.docx'));
+  for (const file of docxFiles) {
+    try {
+      const buf = await fileToBuffer(file);
+      const logo = extractLogoFromDocx(new Uint8Array(buf));
+      if (logo) { state.logoB64 = logo; log(`  ✅ 로고: ${file.name}`, 'ok'); return; }
+    } catch(e) {}
+  }
+  log('  ⚠️ 로고 없음 (기본값 사용)', 'warn');
+}
+
+function extractLogoFromDocx(bytes) {
+  function r16(b,o){return b[o]|(b[o+1]<<8);}
+  function r32(b,o){return(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]*16777216))>>>0;}
+  let i=0;
+  while(i<bytes.length-30){
+    if(bytes[i]===0x50&&bytes[i+1]===0x4B&&bytes[i+2]===0x03&&bytes[i+3]===0x04){
+      const method=r16(bytes,i+8),size=r32(bytes,i+18),fnLen=r16(bytes,i+26),xLen=r16(bytes,i+28);
+      const fn=new TextDecoder().decode(bytes.slice(i+30,i+30+fnLen));
+      const dataStart=i+30+fnLen+xLen;
+      if(fn==='word/media/image121.png'&&method===0){
+        const logo=bytes.slice(dataStart,dataStart+size);
+        let b=''; for(let j=0;j<logo.length;j+=8192) b+=String.fromCharCode(...logo.slice(j,j+8192));
+        return btoa(b);
+      }
+      i=dataStart+Math.max(size,1);
+    } else i++;
+  }
+  return null;
+}
+
+// 분류 미리보기
+function showClassifyPreview(photos, slotMap) {
+  const wrap = document.getElementById('classifyPreview');
+  const grid = document.getElementById('classGrid');
+  grid.innerHTML = '';
+  wrap.style.display = 'block';
+  for (const slot of SLOT_ORDER) {
+    const seq = slotMap[slot];
+    const div = document.createElement('div');
+    div.className = 'class-slot' + (seq ? ' slot-ok' : '');
+    if (seq && photos[seq]) {
+      div.innerHTML = `<img src="data:image/jpeg;base64,${photos[seq]}" alt="${slot}">`;
+    } else {
+      div.innerHTML = `<div class="slot-img-placeholder">없음</div>`;
+    }
+    div.innerHTML += `<div class="slot-name">${slot}</div>`;
+    grid.appendChild(div);
+  }
+}
+
+// ═══════════════════════════════════
+// DOCX 생성 (기존 로직 그대로)
+// ═══════════════════════════════════
+function xmlEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function imgXml(rid, pid) {
+  return `<w:drawing><wp:inline><wp:extent cx="${IMG_CX}" cy="${IMG_CY}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${pid}" name="img${pid}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="img${pid}"/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${IMG_CX}" cy="${IMG_CY}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+}
+function cellXml(text, b64, rid, pid) {
+  const img = b64 && rid ? `<w:p><w:r><w:rPr/>${imgXml(rid,pid)}</w:r></w:p>` : `<w:p/>`;
+  const cap = `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="14"/><w:b/></w:rPr><w:t>${xmlEsc(text)}</w:t></w:r></w:p>`;
+  return `<w:tc><w:tcPr><w:tcW w:w="5316" w:type="dxa"/></w:tcPr>${img}${cap}</w:tc>`;
+}
+
+const SECT_PR = `<w:sectPr><w:headerReference w:type="default" r:id="rId3"/><w:footerReference w:type="default" r:id="rId4"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="567" w:right="720" w:bottom="340" w:left="720" w:header="360" w:footer="280"/></w:sectPr>`;
+
+function buildVanDocx() {
+  const imageRels = {};
+  let ridCounter = 10;
+  let pidCounter = 100;
+  let docXml = '';
+
+  const contNos = state.containers.map(c=>c.no).filter(n=>state.classifiedVan[n]);
+
+  for (let idx=0; idx<contNos.length; idx++) {
+    const no = contNos[idx];
+    const cont = state.containers.find(c=>c.no===no);
+    const classified = state.classifiedVan[no] || {};
+    const isLast = idx === contNos.length - 1;
+
+    const hdrRow = `<w:tr><w:tc><w:tcPr><w:tcW w:w="5316" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="20"/><w:b/></w:rPr><w:t>CONTAINER NO: ${xmlEsc(cont?.container||'')}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="5316" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="20"/><w:b/></w:rPr><w:t>CONTAINER SEAL NO: ${xmlEsc(cont?.seal||'')}</w:t></w:r></w:p></w:tc></w:tr>`;
+
+    const pairs = [
+      ['empty','half'],['full','right_door'],['inspector','seal']
+    ];
+    let rowsXml = hdrRow;
+    for (const [s1, s2] of pairs) {
+      const b1 = classified[s1], b2 = classified[s2];
+      const rid1 = b1 ? `rId${ridCounter++}` : null;
+      const rid2 = b2 ? `rId${ridCounter++}` : null;
+      if (b1 && rid1) imageRels[rid1] = {name:`van_${no}_${s1}.jpg`, b64:b1};
+      if (b2 && rid2) imageRels[rid2] = {name:`van_${no}_${s2}.jpg`, b64:b2};
+      rowsXml += `<w:tr>${cellXml(SLOT_CAPTIONS[s1],b1,rid1,pidCounter++)}${cellXml(SLOT_CAPTIONS[s2],b2,rid2,pidCounter++)}</w:tr>`;
+    }
+
+    const tbl = `<w:tbl><w:tblPr><w:tblW w:w="10632" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="000000"/><w:left w:val="single" w:sz="4" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:color="000000"/><w:right w:val="single" w:sz="4" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:color="000000"/></w:tblBorders></w:tblPr>${rowsXml}</w:tbl>`;
+
+    docXml += tbl;
+    if (!isLast) docXml += `<w:p><w:pPr><w:pageBreakBefore/></w:pPr></w:p>`;
+  }
+
+  return buildDocxZip(docXml, imageRels, 'van');
+}
+
+function buildBalingDocx() {
+  const imageRels = {};
+  let ridCounter = 10;
+  let pidCounter = 200;
+  let docXml = '';
+
+  function addRow(cap1, b1, cap2, b2) {
+    const rid1 = b1 ? `rId${ridCounter++}` : null;
+    const rid2 = b2 ? `rId${ridCounter++}` : null;
+    if (b1 && rid1) imageRels[rid1] = {name:`baling_${ridCounter}_l.jpg`, b64:b1};
+    if (b2 && rid2) imageRels[rid2] = {name:`baling_${ridCounter}_r.jpg`, b64:b2};
+    docXml += `<w:tr>${cellXml(cap1,b1,rid1,pidCounter++)}${cellXml(cap2,b2,rid2,pidCounter++)}</w:tr>`;
+  }
+
+  const b = state.classifiedBaling;
+  const baleCount = Math.max(b.open_bales.length, b.rebales.length, state.baleCount);
+
+  docXml += `<w:tbl><w:tblPr><w:tblW w:w="10632" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="000000"/><w:left w:val="single" w:sz="4" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:color="000000"/><w:right w:val="single" w:sz="4" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:color="000000"/></w:tblBorders></w:tblPr>`;
+
+  addRow('Goods at Yard', b.goods_yard, 'Inspector with Goods', b.inspector);
+  for (let i=0; i<baleCount; i++) {
+    addRow(`Bale #${i+1} — Open bale`, b.open_bales[i]||null,
+           `Bale #${i+1} — Re-bale with Cotecna tape`, b.rebales[i]||null);
+  }
+  docXml += '</w:tbl>';
+
+  return buildDocxZip(docXml, imageRels, 'baling');
+}
+
+function makeHeaderXml(mode) {
+  const vo = xmlEsc(state.voNo||'');
+  const dt = xmlEsc(state.reportDate||'');
+  const inspLine = mode==='baling'
+    ? `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="20"/></w:rPr><w:t>INSPECTION PLACE (倉庫名のみ): ${xmlEsc(state.inspPlace||'')}</w:t></w:r></w:p>` : '';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:p><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline><wp:extent cx="2030095" cy="267970"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="9001" name="Logo"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="Logo"/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="2030095" cy="267970"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p><w:p><w:pPr><w:spacing w:line="180" w:lineRule="auto"/><w:tabs><w:tab w:val="right" w:pos="10466"/></w:tabs></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="20"/></w:rPr><w:t>${vo}</w:t></w:r><w:r><w:tab/></w:r><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="20"/></w:rPr><w:t>Date: ${dt}</w:t></w:r></w:p>${inspLine}</w:hdr>`;
+}
+function makeFooterXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="15"/></w:rPr><w:t>COTECNA INSPECTION JAPAN Co., Ltd. / Rokko Dai Ni Bldg. 5th Floor, 1-3-7 Shinkawa, Chuo-ku, Tokyo 104-0033 JAPAN</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="15"/></w:rPr><w:t>T +81 (0)3 6262 8290 / F +81 (0)3 6262 8293</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="15"/><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr><w:t>www.cotecna.com</w:t></w:r></w:p><w:p><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="16"/></w:rPr><w:t>Form COTECNA WP (26-02)</w:t></w:r></w:p></w:ftr>`;
+}
+function makeStylesXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>`;
+}
+
+function buildDocxZip(docXml, imageRelsMap, mode) {
+  const enc = new TextEncoder();
+  const logoBytes = state.logoB64 ? b64ToUint8(state.logoB64)
+    : new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,2,0,0,0,144,119,83,222,0,0,0,12,73,68,65,84,8,215,99,248,207,192,0,0,0,2,0,1,226,33,188,51,0,0,0,0,73,69,78,68,174,66,96,130]);
+
+  const files = {};
+  const relEntries = [];
+  files['word/media/logo.png'] = logoBytes;
+
+  for (const [rid,{name,b64}] of Object.entries(imageRelsMap)) {
+    files[`word/media/${name}`] = b64ToUint8(b64);
+    relEntries.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${name}"/>`);
+  }
+
+  const wordRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>${relEntries.join('')}</Relationships>`;
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>`;
+  const docFull = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${docXml}${SECT_PR}</w:body></w:document>`;
+  const settings = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:settings>`;
+
+  files['[Content_Types].xml'] = enc.encode(contentTypes);
+  files['_rels/.rels'] = enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  files['word/document.xml'] = enc.encode(docFull);
+  files['word/_rels/document.xml.rels'] = enc.encode(wordRels);
+  files['word/styles.xml'] = enc.encode(makeStylesXml());
+  files['word/settings.xml'] = enc.encode(settings);
+  files['word/header1.xml'] = enc.encode(makeHeaderXml(mode));
+  files['word/footer1.xml'] = enc.encode(makeFooterXml());
+
+  return makeZipStore(Object.entries(files));
+}
+
+function makeZipStore(files) {
+  function crc32(d){let c=0xFFFFFFFF;for(const b of d){c^=b;for(let j=0;j<8;j++) c=c&1?(c>>>1)^0xEDB88320:(c>>>1);}return (c^0xFFFFFFFF)>>>0;}
+  function u16(n){return new Uint8Array([n&0xFF,(n>>8)&0xFF]);}
+  function u32(n){return new Uint8Array([n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>24)&0xFF]);}
+  function cat(...a){const t=new Uint8Array(a.reduce((s,x)=>s+x.length,0));let p=0;for(const x of a){t.set(x,p);p+=x.length;}return t;}
+  const lhs=[],cds=[];let off=0;
+  for(const [name,data] of files){
+    const nb=new TextEncoder().encode(name),crc=crc32(data),sz=data.length;
+    const lh=cat(new Uint8Array([0x50,0x4B,0x03,0x04]),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(sz),u32(sz),u16(nb.length),u16(0),nb,data);
+    const cd=cat(new Uint8Array([0x50,0x4B,0x01,0x02]),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(sz),u32(sz),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off),nb);
+    lhs.push(lh);cds.push(cd);off+=lh.length;
+  }
+  const cdb=cat(...cds);
+  const eocd=cat(new Uint8Array([0x50,0x4B,0x05,0x06]),u16(0),u16(0),u16(files.length),u16(files.length),u32(cdb.length),u32(off),u16(0));
+  return cat(...lhs,cdb,eocd);
+}
+
+// ═══════════════════════════════════
+// 결과 표시
+// ═══════════════════════════════════
+function showResults(vanBuf, balingBuf) {
+  const section = document.getElementById('resultSection');
+  const row = document.getElementById('downloadRow');
+  const statusRow = document.getElementById('statusRow');
+  section.style.display = 'block';
+  const voSafe = (state.voNo||'REPORT').replace(/[^a-zA-Z0-9._-]/g,'_');
+  const downloads = [
+    {buf:vanBuf,    name:`${voSafe}_PHOTO_REPORT_VAN.docx`,    icon:'📦', label:'VAN FORM'},
+    {buf:balingBuf, name:`${voSafe}_PHOTO_REPORT_BALING.docx`, icon:'📋', label:'BALING FORM'},
+  ];
+  row.innerHTML = downloads.map(d => {
+    const blob = new Blob([d.buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url = URL.createObjectURL(blob);
+    return `<a class="dl-btn" href="${url}" download="${d.name}"><div class="dl-icon">${d.icon}</div><div class="dl-info"><span class="dl-name">${d.label}</span><span class="dl-size">${(d.buf.length/1024).toFixed(0)}KB · ${d.name}</span></div></a>`;
+  }).join('');
+  statusRow.innerHTML = `
+    <div class="status-chip"><div class="chip-dot chip-ok"></div>모드: ${state.mode}</div>
+    <div class="status-chip"><div class="chip-dot chip-ok"></div>VAN: ${state.containers.length}컨테이너</div>
+    <div class="status-chip"><div class="chip-dot chip-ok"></div>BALING: ${state.baleCount}베일</div>
+    <div class="status-chip"><div class="chip-dot chip-ok"></div>AI 분류 ✅</div>`;
+  section.scrollIntoView({behavior:'smooth'});
+}
+
+// ═══════════════════════════════════
+// UI 헬퍼
+// ═══════════════════════════════════
+function log(msg, type='') {
+  const box = document.getElementById('logBox');
+  if (!box) return;
+  const div = document.createElement('div');
+  div.className = type ? `log-${type}` : '';
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog() { const b=document.getElementById('logBox'); if(b) b.innerHTML=''; }
+function setProgress(pct, label) {
+  const fill=document.getElementById('progressFill');
+  const lbl=document.getElementById('progressLabel');
+  const pctEl=document.getElementById('progressPct');
+  if(fill) fill.style.width=pct+'%';
+  if(lbl) lbl.textContent=label;
+  if(pctEl) pctEl.textContent=pct+'%';
+}
+function setPhase(n) {
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById(`ph${i}`);
+    if(!el) continue;
+    el.className='phase-chip'+(i<n?' done':i===n?' active':'');
+  }
+}
+function setAllDone() {
+  for(let i=1;i<=5;i++){const el=document.getElementById(`ph${i}`);if(el) el.className='phase-chip done';}
+}
+</script>
+
+</body>
+</html>

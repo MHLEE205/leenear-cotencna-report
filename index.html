@@ -183,7 +183,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="header-logo">📋</div>
   <div>
     <div class="header-title">COTECNA Report Generator</div>
-    <div class="header-sub">LEENEAR CORPORATION — AI 자동화 Tool v3.6 (2026.03.22)</div>
+    <div class="header-sub">LEENEAR CORPORATION — AI 자동화 Tool v3.7 (2026.03.22)</div>
   </div>
   <div class="header-badge">LEENAI</div>
 </div>
@@ -304,12 +304,16 @@ const IMG_CX = 3303270, IMG_CY = 2477135;
 // AI 분류 프롬프트 — 사진 내용만으로 판단 (파일명/폴더명 무관)
 const VAN_PROMPT = `この写真はコンテナ検査の写真です。以下の6種類のうち最も当てはまるものを1単語だけ答えてください（他のテキストは不要）:
 
-empty      - コンテナ内部が完全に空の写真（荷物が一切ない）
-half       - コンテナ内部に荷物(廃紙ベール等)が半分程度積まれている写真（奥の方だけ積載）
-full       - コンテナ内部に荷物が満載・ほぼ満杯の写真
-right_door - コンテナの右扉だけが閉まっており左扉は開いている外観写真。右扉にはコンテナ番号が表示されており、左扉が開いているため左側から荷物が見えている。重要: 写真の左右でコンテナの色が異なる（左=荷物側, 右=扉側）
+empty      - コンテナ内部が完全に空の写真（荷物が一切ない、床と壁だけ見える）
+half       - コンテナ内部に荷物(廃紙ベール等)が半分程度積まれている写真（奥の方だけ積載、手前は空）
+full       - コンテナ内部に荷物が満載・ほぼ満杯の写真（ベールがぎっしり詰まっている）
+right_door - 【重要な判別条件】コンテナを外から見た写真で、以下の条件を全て満たすもの:
+             ①右側の扉だけが閉まっている（右扉に ONEU/GAOU/FFAU 等のコンテナ番号が白文字で書かれている）
+             ②左側の扉は開いており、左側からベール(廃紙)が見えている
+             ③写真の右半分はピンク/赤のコンテナ扉、左半分は開口部から荷物が見える
+             ※両扉が閉まっている写真はright_doorではなくinspectorまたはfullに分類
 inspector  - ヘルメット・安全ベストを着用した検査員が検査カードを持ってコンテナの前に立っている写真（人物あり）
-seal       - 必ず黄色いCOTECNA社のプラスチックシール。上部に「COTECNA」と印字されており「JP-」で始まる番号が記載されている。ONE・MSC・HAPAG等の船社シールは絶対にsealと分類しないこと
+seal       - 黄色いCOTECNA社のプラスチックシールのクローズアップ。「COTECNA」ロゴの下に「JP-」で始まる数字が刻印されている。ONE・MSC・HAPAG・CIMC等の船社シールは絶対にsealと分類しないこと
 
 必ず上記6つのいずれか1つのみ答えてください。`;
 
@@ -849,46 +853,62 @@ async function classifyAll() {
         const tasks = [];
 
         // Container No. OCR — right_door 사진에서
-        if (needsContOCR && !cont.container?.match(/[A-Z]{4}\d{7}/i)) {
-          const rdB64 = state.classifiedVan[no]?.right_door;
-          if (rdB64) {
-            tasks.push(
-              callAI([
-                {type:'image', source:{type:'base64', media_type:'image/jpeg', data:rdB64}},
-                {type:'text', text:`このコンテナドアの写真からコンテナ番号を読み取ってください。
-コンテナ番号は英字4文字+数字7桁の形式です（例: TCKU6217186, FFAU7882109, CMAU8898781）。
-番号のみ答えてください。読み取れない場合は「不明」と答えてください。`}
-              ], 25).then(val => {
-                const m = val.trim().match(/[A-Z]{4}\d{7}/i);
-                if (m) {
-                  cont.container = m[0].toUpperCase();
-                  log(`    CN${no}: Container → ${cont.container}`, 'ok');
-                }
-              }).catch(()=>{})
-            );
-          }
+        // 항상 재확인 (OCR 오류 가능성 높음)
+        const rdB64 = state.classifiedVan[no]?.right_door;
+        if (rdB64) {
+          tasks.push(
+            callAI([
+              {type:'image', source:{type:'base64', media_type:'image/jpeg', data:rdB64}},
+              {type:'text', text:`この写真のコンテナドアに書かれているコンテナ番号を正確に読み取ってください。
+コンテナ番号は必ず「英字4文字 + 数字7桁」の形式です。
+例: ONEU0199373, GAOU6591180, FFAU6727010, TCKU6217186
+
+注意:
+- 数字の0とアルファベットのOを間違えないこと
+- 数字の1とアルファベットのIを間違えないこと  
+- 必ず英字4文字から始まること（ONEU, GAOU, FFAU, TCKU, CMAU等）
+- 数字部分は必ず7桁
+
+番号のみ答えてください（スペースなし）。`}
+            ], 30).then(val => {
+              const m = val.trim().match(/[A-Z]{4}\d{7}/i);
+              if (m) {
+                cont.container = m[0].toUpperCase();
+                log(`    CN${no}: Container → ${cont.container}`, 'ok');
+              } else {
+                log(`    CN${no}: Container OCR失敗 (${val.trim()})`, 'warn');
+              }
+            }).catch(()=>{})
+          );
         }
 
-        // Seal No. OCR — seal 사진에서
-        if (needsSealOCR && !cont.seal) {
-          const sealB64 = state.classifiedVan[no]?.seal;
-          if (sealB64) {
-            tasks.push(
-              callAI([
-                {type:'image', source:{type:'base64', media_type:'image/jpeg', data:sealB64}},
-                {type:'text', text:`この写真に写っているCOTECNAシールの番号を読み取ってください。
-COTECNAシールは黄色いプラスチック製で上部に「COTECNA」と印字されており「JP-」で始まる番号が記載されています（例: JP-9047712）。
-「JP-」から始まる番号のみ答えてください。読み取れない場合は「不明」と答えてください。`}
-              ], 25).then(val => {
-                const m = val.trim().match(/JP[-\s]?\d{6,8}/i);
-                const cleaned = m ? m[0].replace(/\s/g,'') : val.trim().replace(/[^\w\-]/g,'');
-                if (cleaned && cleaned !== '不明' && cleaned.length >= 4) {
-                  cont.seal = cleaned.toUpperCase();
-                  log(`    CN${no}: Seal → ${cont.seal}`, 'ok');
-                }
-              }).catch(()=>{})
-            );
-          }
+        // Seal No. OCR — seal 사진에서 JP-XXXXXXX 번호만 읽기
+        const sealB64 = state.classifiedVan[no]?.seal;
+        if (sealB64) {
+          tasks.push(
+            callAI([
+              {type:'image', source:{type:'base64', media_type:'image/jpeg', data:sealB64}},
+              {type:'text', text:`この写真に写っているCOTECNAシールの番号を読み取ってください。
+
+COTECNAシールには以下の情報が書かれています:
+- 上部: 「COTECNA」というブランド名（これは番号ではありません）
+- 中央～下部: 「JP-」で始まる数字（これがシール番号です）
+
+例: JP-9047712, JP-9047713, JP-9047714
+
+「JP-」から始まる番号のみ答えてください。
+「COTECNA」というブランド名は答えないでください。
+読み取れない場合は「不明」と答えてください。`}
+            ], 20).then(val => {
+              const m = val.trim().match(/JP-?\d{5,8}/i);
+              if (m) {
+                cont.seal = m[0].toUpperCase().replace('JP', 'JP-').replace('JP--', 'JP-');
+                log(`    CN${no}: Seal → ${cont.seal}`, 'ok');
+              } else {
+                log(`    CN${no}: Seal OCR失敗 (${val.trim()})`, 'warn');
+              }
+            }).catch(()=>{})
+          );
         }
 
         await Promise.all(tasks);
